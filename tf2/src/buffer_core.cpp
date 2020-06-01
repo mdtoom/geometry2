@@ -34,6 +34,7 @@
 #include "tf2/exceptions.h"
 
 #include <assert.h>
+#include <limits>
 #include <console_bridge/console.h>
 #include "tf2/LinearMath/Transform.h"
 
@@ -528,20 +529,22 @@ tf2::TF2Error BufferCore::walkToTopParent(F& f, TimePoint time, CompactFrameID t
   if (frame_chain)
   {
     // Pruning: Compare the chains starting at the parent (end) until they differ
-    int m = (int)reverse_frame_chain.size()-1;
-    int n = (int)frame_chain->size()-1;
-    for (; m >= 0 && n >= 0; --m, --n)
+    size_t m = reverse_frame_chain.size()-1;
+    size_t n = frame_chain->size()-1;
+    for (; m != std::numeric_limits<size_t>::max() &&
+      n != std::numeric_limits<size_t>::max(); --m, --n)
     {
       if ((*frame_chain)[n] != reverse_frame_chain[m])
         break;
     }
     // Erase all duplicate items from frame_chain
-    if (n > 0)
+    if (n != std::numeric_limits<size_t>::max()) {
       frame_chain->erase(frame_chain->begin() + (n-1), frame_chain->end());
+    }
 
     if (m < reverse_frame_chain.size())
     {
-      for (int i = m; i >= 0; --i)
+      for (size_t i = m; i >= 0; --i)
       {
         frame_chain->push_back(reverse_frame_chain[i]);
       }
@@ -832,10 +835,13 @@ struct CanTransformAccum
 
   void accum(bool source)
   {
+    (void)source;
   }
 
   void finalize(WalkEnding end, TimePoint _time)
   {
+    (void)end;
+    (void)_time;
   }
 
   TransformStorage st;
@@ -1425,7 +1431,7 @@ bool BufferCore::_getParent(const std::string& frame_id, TimePoint time, std::st
 
   parent = lookupFrameString(parent_id);
   return true;
-};
+}
 
 void BufferCore::_getFrameStrings(std::vector<std::string> & vec) const
 {
@@ -1666,20 +1672,22 @@ void BufferCore::_chainAsVector(const std::string & target_frame, TimePoint targ
         assert(0);
       }
     }
-    int m = (int)target_frame_chain.size()-1;
-    int n = (int)source_frame_chain.size()-1;
-    for (; m >= 0 && n >= 0; --m, --n)
+    size_t m = target_frame_chain.size()-1;
+    size_t n = source_frame_chain.size()-1;
+    for (; m != std::numeric_limits<size_t>::max() &&
+      n != std::numeric_limits<size_t>::max(); --m, --n)
     {
       if (source_frame_chain[n] != target_frame_chain[m])
         break;
     }
     // Erase all duplicate items from frame_chain
-    if (n > 0)
+    if (n != std::numeric_limits<size_t>::max()) {
       source_frame_chain.erase(source_frame_chain.begin() + (n-1), source_frame_chain.end());
+    }
 
     if (m < target_frame_chain.size())
     {
-      for (int i = 0; i <= m; ++i)
+      for (size_t i = 0; i <= m; ++i)
       {
         source_frame_chain.push_back(target_frame_chain[i]);
       }
@@ -1687,10 +1695,9 @@ void BufferCore::_chainAsVector(const std::string & target_frame, TimePoint targ
   }
 
   // Write each element of source_frame_chain as string
-  for (unsigned int i = 0; i < source_frame_chain.size(); ++i)
-  {
+  for (size_t i = 0; i < source_frame_chain.size(); ++i) {
     output.push_back(lookupFrameString(source_frame_chain[i]));
- }
+  }
 }
 
 

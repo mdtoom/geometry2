@@ -39,26 +39,29 @@ using namespace tf2;
 
 bool StaticCache::getData(TimePoint time, TransformStorage & data_out, std::string* error_str) //returns false if data not available
 {
+  (void)error_str;
   data_out = storage_;
   data_out.stamp_ = time;
   return true;
-};
+}
 
 bool StaticCache::insertData(const TransformStorage& new_data)
 {
   storage_ = new_data;
   return true;
-};
+}
 
 
 
 
-void StaticCache::clearList() { return; };
+void StaticCache::clearList() { return; }
 
-unsigned int StaticCache::getListLength() {   return 1; };
+unsigned int StaticCache::getListLength() {   return 1; }
 
 CompactFrameID StaticCache::getParent(TimePoint time, std::string* error_str)
 {
+  (void)error_str;
+  (void)time;
   return storage_.frame_id_;
 }
 
@@ -70,9 +73,9 @@ P_TimeAndFrameID StaticCache::getLatestTimeAndParent()
 TimePoint StaticCache::getLatestTimestamp()
 {   
   return TimePoint();
-};
+}
 
 TimePoint StaticCache::getOldestTimestamp()
 {   
   return TimePoint();
-};
+}
