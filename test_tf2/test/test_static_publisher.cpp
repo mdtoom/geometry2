@@ -69,7 +69,7 @@ TEST(StaticTransformPublisher, a_b_different_times)
   executor.cancel();
   spin_thread.join();
   node.reset();
-};
+}
 
 TEST(StaticTransformPublisher, a_c_different_times)
 {
@@ -94,7 +94,7 @@ TEST(StaticTransformPublisher, a_c_different_times)
   executor.cancel();
   spin_thread.join();
   node.reset();
-};
+}
 
 TEST(StaticTransformPublisher, a_d_different_times)
 {
@@ -135,7 +135,7 @@ TEST(StaticTransformPublisher, a_d_different_times)
   executor.cancel();
   spin_thread.join();
   node.reset();
-};
+}
 
 TEST(StaticTransformPublisher, multiple_parent_test)
 {
@@ -188,7 +188,7 @@ TEST(StaticTransformPublisher, multiple_parent_test)
   executor.cancel();
   spin_thread.join();
   node.reset();
-};
+}
 
 // TODO (ahcorde) static_transform_publisher allows to load transforma from yaml files
 // Revisit this test when "Load transform from yaml" is available
