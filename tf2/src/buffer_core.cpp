@@ -34,7 +34,6 @@
 #include "tf2/exceptions.h"
 
 #include <assert.h>
-#include <limits>
 #include <console_bridge/console.h>
 #include "tf2/LinearMath/Transform.h"
 
@@ -529,25 +528,23 @@ tf2::TF2Error BufferCore::walkToTopParent(F& f, TimePoint time, CompactFrameID t
   if (frame_chain)
   {
     // Pruning: Compare the chains starting at the parent (end) until they differ
-    size_t m = reverse_frame_chain.size()-1;
-    size_t n = frame_chain->size()-1;
-    for (; m != std::numeric_limits<size_t>::max() &&
-      n != std::numeric_limits<size_t>::max(); --m, --n)
+    size_t fcs = frame_chain->size() - 1;
+    size_t rcs = reverse_frame_chain.size() - 1;
+    size_t m = 1;
+    size_t n = 1;
+    for (; m <= rcs && n <= fcs; ++m, ++n)
     {
-      if ((*frame_chain)[n] != reverse_frame_chain[m])
+      if ((*frame_chain)[fcs - n] != reverse_frame_chain[rcs - m])
         break;
     }
     // Erase all duplicate items from frame_chain
-    if (n != std::numeric_limits<size_t>::max()) {
-      frame_chain->erase(frame_chain->begin() + (n-1), frame_chain->end());
+    if (n <= fcs) {
+      frame_chain->erase(frame_chain->begin() + (fcs - n - 1), frame_chain->end());
     }
 
-    if (m < reverse_frame_chain.size())
+    for (size_t i = m; i <= rcs; ++i)
     {
-      for (size_t i = m; i >= 0; --i)
-      {
-        frame_chain->push_back(reverse_frame_chain[i]);
-      }
+      frame_chain->push_back(reverse_frame_chain[rcs - i]);
     }
   }
 
@@ -1672,25 +1669,24 @@ void BufferCore::_chainAsVector(const std::string & target_frame, TimePoint targ
         assert(0);
       }
     }
-    size_t m = target_frame_chain.size()-1;
-    size_t n = source_frame_chain.size()-1;
-    for (; m != std::numeric_limits<size_t>::max() &&
-      n != std::numeric_limits<size_t>::max(); --m, --n)
+    size_t tfs = target_frame_chain.size() - 1;
+    size_t sfs = source_frame_chain.size() - 1;
+    size_t m = 1;
+    size_t n = 1;
+    for (; m <= tfs && n <= sfs; ++m, ++n)
     {
-      if (source_frame_chain[n] != target_frame_chain[m])
+      if (source_frame_chain[sfs - n] != target_frame_chain[tfs - m])
         break;
     }
     // Erase all duplicate items from frame_chain
-    if (n != std::numeric_limits<size_t>::max()) {
-      source_frame_chain.erase(source_frame_chain.begin() + (n-1), source_frame_chain.end());
+    if (n <= sfs) {
+      source_frame_chain.erase(
+        source_frame_chain.begin() + (sfs - n - 1), source_frame_chain.end());
     }
 
-    if (m < target_frame_chain.size())
+    for (size_t i = 0; i <= (tfs - m); ++i)
     {
-      for (size_t i = 0; i <= m; ++i)
-      {
-        source_frame_chain.push_back(target_frame_chain[i]);
-      }
+      source_frame_chain.push_back(target_frame_chain[i]);
     }
   }
 
