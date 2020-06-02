@@ -528,17 +528,20 @@ tf2::TF2Error BufferCore::walkToTopParent(F& f, TimePoint time, CompactFrameID t
   if (frame_chain)
   {
     // Pruning: Compare the chains starting at the parent (end) until they differ
+    if (0u == frame_chain->size() || 0u == reverse_frame_chain.size()) {
+      return tf2::TF2Error::NO_ERROR;
+    }
     size_t fcs = frame_chain->size() - 1;
     size_t rcs = reverse_frame_chain.size() - 1;
-    size_t m = 1;
-    size_t n = 1;
+    size_t m = 0;
+    size_t n = 0;
     for (; m <= rcs && n <= fcs; ++m, ++n)
     {
       if ((*frame_chain)[fcs - n] != reverse_frame_chain[rcs - m])
         break;
     }
     // Erase all duplicate items from frame_chain
-    if (n <= fcs) {
+    if (n < fcs) {
       frame_chain->erase(frame_chain->begin() + (fcs - n - 1), frame_chain->end());
     }
 
@@ -1669,17 +1672,20 @@ void BufferCore::_chainAsVector(const std::string & target_frame, TimePoint targ
         assert(0);
       }
     }
+    if ((0u == target_frame_chain.size()) || (0u == source_frame_chain.size())) {
+      return;
+    }
     size_t tfs = target_frame_chain.size() - 1;
     size_t sfs = source_frame_chain.size() - 1;
-    size_t m = 1;
-    size_t n = 1;
+    size_t m = 0;
+    size_t n = 0;
     for (; m <= tfs && n <= sfs; ++m, ++n)
     {
       if (source_frame_chain[sfs - n] != target_frame_chain[tfs - m])
         break;
     }
     // Erase all duplicate items from frame_chain
-    if (n <= sfs) {
+    if (n < sfs) {
       source_frame_chain.erase(
         source_frame_chain.begin() + (sfs - n - 1), source_frame_chain.end());
     }
