@@ -545,7 +545,7 @@ tf2::TF2Error BufferCore::walkToTopParent(F& f, TimePoint time, CompactFrameID t
       frame_chain->erase(frame_chain->begin() + (fcs - n - 1), frame_chain->end());
     }
 
-    for (size_t i = rcs - m; i <= rcs; ++i)
+    for (size_t i = m; i <= rcs; ++i)
     {
       frame_chain->push_back(reverse_frame_chain[rcs - i]);
     }
