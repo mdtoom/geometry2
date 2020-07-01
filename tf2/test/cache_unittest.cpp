@@ -46,7 +46,7 @@ void seed_rand()
     values.push_back(( pseudo_rand % 100)/50.0 - 1.0);
     //printf("Seeding with %f\n", values.back());
   }
-}
+};
 
 
 double get_rand() 
