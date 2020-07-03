@@ -1070,7 +1070,6 @@ tf2::TF2Error BufferCore::getLatestCommonTime(CompactFrameID target_id, CompactF
   // Walk the tree to its root from the source frame, accumulating the list of parent/time as well as the latest time
   // in the target is a direct parent
   CompactFrameID frame = source_id;
-  P_TimeAndFrameID temp;
   uint32_t depth = 0;
   TimePoint common_time = TimePoint::max();
   while (frame != 0)
