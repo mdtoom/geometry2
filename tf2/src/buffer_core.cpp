@@ -34,7 +34,6 @@
 #include "tf2/exceptions.h"
 
 #include <assert.h>
-#include <limits>
 #include <console_bridge/console.h>
 #include "tf2/LinearMath/Transform.h"
 
@@ -529,13 +528,14 @@ tf2::TF2Error BufferCore::walkToTopParent(F& f, TimePoint time, CompactFrameID t
   if (frame_chain)
   {
     // Pruning: Compare the chains starting at the parent (end) until they differ
-    size_t m = reverse_frame_chain.size() - 1u;
-    size_t n = frame_chain->size() - 1u;
-    for (; m != std::numeric_limits<size_t>::max() &&
-      n != std::numeric_limits<size_t>::max(); --m, --n)
-    {
-      if ((*frame_chain)[n] != reverse_frame_chain[m])
+    size_t m = reverse_frame_chain.size();
+    size_t n = frame_chain->size();
+    while (m > 0u && n > 0u) {
+      --m;
+      --n;
+      if ((*frame_chain)[n] != reverse_frame_chain[m]) {
         break;
+      }
     }
     // Erase all duplicate items from frame_chain
     if (n > 0u) {
@@ -544,8 +544,9 @@ tf2::TF2Error BufferCore::walkToTopParent(F& f, TimePoint time, CompactFrameID t
 
     if (m < reverse_frame_chain.size())
     {
-      for (size_t i = m; i != std::numeric_limits<size_t>::max(); --i)
-      {
+      size_t i = m + 1uL;
+      while (i > 0u) {
+        --i;
         frame_chain->push_back(reverse_frame_chain[i]);
       }
     }
@@ -1671,13 +1672,14 @@ void BufferCore::_chainAsVector(const std::string & target_frame, TimePoint targ
         assert(0);
       }
     }
-    size_t m = target_frame_chain.size() - 1u;
-    size_t n = source_frame_chain.size() - 1u;
-    for (; m != std::numeric_limits<size_t>::max() &&
-      n != std::numeric_limits<size_t>::max(); --m, --n)
-    {
-      if (source_frame_chain[n] != target_frame_chain[m])
+    size_t m = target_frame_chain.size();
+    size_t n = source_frame_chain.size();
+    while (m > 0u && n > 0u) {
+      --m;
+      --n;
+      if (source_frame_chain[n] != target_frame_chain[m]) {
         break;
+      }
     }
     // Erase all duplicate items from frame_chain
     if (n > 0u) {
