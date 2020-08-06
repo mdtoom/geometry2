@@ -37,7 +37,7 @@
 
 namespace tf2
 {
-typedef uint32_t CompactFrameID;
+typedef size_t CompactFrameID;
 
 /** \brief Storage for transforms and their parent */
 class TransformStorage

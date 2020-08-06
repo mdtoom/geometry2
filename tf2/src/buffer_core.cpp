@@ -28,8 +28,6 @@
 
 /** \author Tully Foote */
 
-#include <assert.h>
-
 #include <algorithm>
 #include <map>
 #include <string>
@@ -218,7 +216,7 @@ BufferCore::BufferCore(tf2::Duration cache_time)
 {
   frameIDs_["NO_PARENT"] = 0;
   frames_.push_back(TimeCacheInterfacePtr());
-  frameIDs_reverse.push_back("NO_PARENT");
+  frameIDs_reverse_.push_back("NO_PARENT");
 }
 
 BufferCore::~BufferCore() {}
@@ -264,15 +262,6 @@ bool BufferCore::setTransformImpl(
   const std::string child_frame_id, const TimePoint stamp,
   const std::string & authority, bool is_static)
 {
-  // BACKWARDS COMPATABILITY
-  /* tf::StampedTransform tf_transform;
-  tf::transformStampedMsgToTF(transform_in, tf_transform);
-  if  (!old_tf_.setTransform(tf_transform, authority))
-  {
-   printf("Warning old setTransform Failed but was not caught\n");
-  }*/
-
-  /////// New implementation
   std::string stripped_frame_id = stripSlash(frame_id);
   std::string stripped_child_frame_id = stripSlash(child_frame_id);
 
@@ -735,25 +724,23 @@ void BufferCore::lookupTransformImpl(
   std::string error_string;
   TransformAccum accum;
   tf2::TF2Error retval = walkToTopParent(accum, time, target_id, source_id, &error_string);
-  if (retval != tf2::TF2Error::NO_ERROR) {
-    switch (retval) {
-      case tf2::TF2Error::CONNECTIVITY_ERROR:
-        throw ConnectivityException(error_string);
-      case tf2::TF2Error::EXTRAPOLATION_ERROR:
-        throw ExtrapolationException(error_string);
-      case tf2::TF2Error::LOOKUP_ERROR:
-        throw LookupException(error_string);
-      default:
-        CONSOLE_BRIDGE_logError("Unknown error code: %d", retval);
-        assert(0);
-    }
+  switch (retval) {
+    case tf2::TF2Error::NO_ERROR:
+      break;
+    case tf2::TF2Error::CONNECTIVITY_ERROR:
+      throw ConnectivityException(error_string);
+    case tf2::TF2Error::EXTRAPOLATION_ERROR:
+      throw ExtrapolationException(error_string);
+    case tf2::TF2Error::LOOKUP_ERROR:
+      throw LookupException(error_string);
+    default:
+      throw std::runtime_error("Unknown error code: " + std::to_string(static_cast<int>(retval)));
   }
 
   time_out = accum.time;
   transform.setOrigin(accum.result_vec);
   transform.setRotation(accum.result_quat);
 }
-
 
 void BufferCore::lookupTransformImpl(
   const std::string & target_frame,
@@ -774,71 +761,6 @@ void BufferCore::lookupTransformImpl(
 
   transform = tf2 * tf1;
 }
-
-
-/*
-geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
-                                          const std::string& observation_frame,
-                                          const tf2::TimePoint& time,
-                                          const tf2::Duration& averaging_interval) const
-{
-  try
-  {
-  geometry_msgs::Twist t;
-  old_tf_.lookupTwist(tracking_frame, observation_frame,
-                      time, averaging_interval, t);
-  return t;
-  }
-  catch (tf::LookupException& ex)
-  {
-    throw tf2::LookupException(ex.what());
-  }
-  catch (tf::ConnectivityException& ex)
-  {
-    throw tf2::ConnectivityException(ex.what());
-  }
-  catch (tf::ExtrapolationException& ex)
-  {
-    throw tf2::ExtrapolationException(ex.what());
-  }
-  catch (tf::InvalidArgument& ex)
-  {
-    throw tf2::InvalidArgumentException(ex.what());
-  }
-}
-
-geometry_msgs::Twist BufferCore::lookupTwist(const std::string& tracking_frame,
-                                          const std::string& observation_frame,
-                                          const std::string& reference_frame,
-                                          const tf2::Point & reference_point,
-                                          const std::string& reference_point_frame,
-                                          const tf2::TimePoint& time,
-                                          const tf2::Duration& averaging_interval) const
-{
-  try{
-  geometry_msgs::Twist t;
-  old_tf_.lookupTwist(tracking_frame, observation_frame, reference_frame, reference_point, reference_point_frame,
-                      time, averaging_interval, t);
-  return t;
-  }
-  catch (tf::LookupException& ex)
-  {
-    throw tf2::LookupException(ex.what());
-  }
-  catch (tf::ConnectivityException& ex)
-  {
-    throw tf2::ConnectivityException(ex.what());
-  }
-  catch (tf::ExtrapolationException& ex)
-  {
-    throw tf2::ExtrapolationException(ex.what());
-  }
-  catch (tf::InvalidArgument& ex)
-  {
-    throw tf2::InvalidArgumentException(ex.what());
-  }
-}
-*/
 
 struct CanTransformAccum
 {
@@ -938,7 +860,6 @@ bool BufferCore::canTransform(
     canTransformInternal(fixed_id, source_id, source_time, error_msg);
 }
 
-
 tf2::TimeCacheInterfacePtr BufferCore::getFrame(CompactFrameID frame_id) const
 {
   if (frame_id >= frames_.size()) {
@@ -969,7 +890,7 @@ CompactFrameID BufferCore::lookupOrInsertFrameNumber(const std::string & frameid
     // Just a place holder for iteration
     frames_.push_back(TimeCacheInterfacePtr());
     frameIDs_[frameid_str] = retval;
-    frameIDs_reverse.push_back(frameid_str);
+    frameIDs_reverse_.push_back(frameid_str);
   } else {
     retval = frameIDs_[frameid_str];
   }
@@ -978,12 +899,12 @@ CompactFrameID BufferCore::lookupOrInsertFrameNumber(const std::string & frameid
 
 const std::string & BufferCore::lookupFrameString(CompactFrameID frame_id_num) const
 {
-  if (frame_id_num >= frameIDs_reverse.size()) {
+  if (frame_id_num >= frameIDs_reverse_.size()) {
     std::stringstream ss;
     ss << "Reverse lookup of frame id " << frame_id_num << " failed!";
     throw tf2::LookupException(ss.str());
   } else {
-    return frameIDs_reverse[frame_id_num];
+    return frameIDs_reverse_[frame_id_num];
   }
 }
 
@@ -1020,7 +941,7 @@ std::string BufferCore::allFramesAsStringNoLock() const
   TransformStorage temp;
 
   // regular transforms
-  for (unsigned int counter = 1; counter < frames_.size(); counter++) {
+  for (size_t counter = 1; counter < frames_.size(); counter++) {
     TimeCacheInterfacePtr frame_ptr = getFrame(CompactFrameID(counter));
     if (frame_ptr == NULL) {
       continue;
@@ -1031,8 +952,8 @@ std::string BufferCore::allFramesAsStringNoLock() const
     } else {
       frame_id_num = 0;
     }
-    mstream << "Frame " << frameIDs_reverse[counter] << " exists with parent " <<
-      frameIDs_reverse[frame_id_num] << "." << std::endl;
+    mstream << "Frame " << frameIDs_reverse_[counter] << " exists with parent " <<
+      frameIDs_reverse_[frame_id_num] << "." << std::endl;
   }
 
   return mstream.str();
@@ -1219,7 +1140,7 @@ std::string BufferCore::allFramesAsYAML(TimePoint current_time) const
   mstream.setf(std::ios::fixed, std::ios::floatfield);
 
   // one referenced for 0 is no frame
-  for (unsigned int counter = 1; counter < frames_.size(); counter++) {
+  for (size_t counter = 1; counter < frames_.size(); counter++) {
     CompactFrameID cfid = CompactFrameID(counter);
     CompactFrameID frame_id_num;
     TimeCacheInterfacePtr cache = getFrame(cfid);
@@ -1253,8 +1174,8 @@ std::string BufferCore::allFramesAsYAML(TimePoint current_time) const
 
     mstream << std::fixed;  // fixed point notation
     mstream.precision(3);  // 3 decimal places
-    mstream << frameIDs_reverse[cfid] << ": " << std::endl;
-    mstream << "  parent: '" << frameIDs_reverse[frame_id_num] << "'" << std::endl;
+    mstream << frameIDs_reverse_[cfid] << ": " << std::endl;
+    mstream << "  parent: '" << frameIDs_reverse_[frame_id_num] << "'" << std::endl;
     mstream << "  broadcaster: '" << authority << "'" << std::endl;
     mstream << "  rate: " << rate << std::endl;
     mstream << "  most_recent_transform: " << displayTimePoint(cache->getLatestTimestamp()) <<
@@ -1430,8 +1351,8 @@ void BufferCore::_getFrameStrings(std::vector<std::string> & vec) const
 
   TransformStorage temp;
 
-  for (unsigned int counter = 1; counter < frameIDs_reverse.size(); counter++) {
-    vec.push_back(frameIDs_reverse[counter]);
+  for (size_t counter = 1; counter < frameIDs_reverse_.size(); counter++) {
+    vec.push_back(frameIDs_reverse_[counter]);
   }
 }
 
@@ -1497,7 +1418,6 @@ void BufferCore::testTransformableRequests()
   lock.unlock();
 }
 
-
 std::string BufferCore::_allFramesAsDot(TimePoint current_time) const
 {
   std::stringstream mstream;
@@ -1512,8 +1432,8 @@ std::string BufferCore::_allFramesAsDot(TimePoint current_time) const
   mstream.precision(3);
   mstream.setf(std::ios::fixed, std::ios::floatfield);
   // one referenced for 0 is no frame
-  for (unsigned int counter = 1; counter < frames_.size(); counter++) {
-    unsigned int frame_id_num;
+  for (size_t counter = 1; counter < frames_.size(); counter++) {
+    CompactFrameID frame_id_num;
     TimeCacheInterfacePtr counter_frame = getFrame(counter);
     if (!counter_frame) {
       continue;
@@ -1524,7 +1444,7 @@ std::string BufferCore::_allFramesAsDot(TimePoint current_time) const
       frame_id_num = temp.frame_id_;
     }
     std::string authority = "no recorded authority";
-    std::map<unsigned int, std::string>::const_iterator it = frame_authority_.find(counter);
+    std::map<CompactFrameID, std::string>::const_iterator it = frame_authority_.find(counter);
     if (it != frame_authority_.end()) {
       authority = it->second;
     }
@@ -1543,8 +1463,8 @@ std::string BufferCore::_allFramesAsDot(TimePoint current_time) const
 
     mstream << std::fixed;  // fixed point notation
     mstream.precision(3);  // 3 decimal places
-    mstream << "\"" << frameIDs_reverse[frame_id_num] << "\"" << " -> " <<
-      "\"" << frameIDs_reverse[counter] << "\"" << "[label=\"" <<
+    mstream << "\"" << frameIDs_reverse_[frame_id_num] << "\"" << " -> " <<
+      "\"" << frameIDs_reverse_[counter] << "\"" << "[label=\"" <<
       "Broadcaster: " << authority << "\\n" <<
       "Average rate: " << rate << " Hz\\n" <<
       "Most recent transform: " << displayTimePoint(counter_frame->getLatestTimestamp()) << " ";
@@ -1559,8 +1479,8 @@ std::string BufferCore::_allFramesAsDot(TimePoint current_time) const
   }
 
   // one referenced for 0 is no frame
-  for (unsigned int counter = 1; counter < frames_.size(); counter++) {
-    unsigned int frame_id_num;
+  for (size_t counter = 1; counter < frames_.size(); counter++) {
+    CompactFrameID frame_id_num;
     TimeCacheInterfacePtr counter_frame = getFrame(counter);
     if (!counter_frame) {
       if (current_time != TimePointZero) {
@@ -1570,7 +1490,7 @@ std::string BufferCore::_allFramesAsDot(TimePoint current_time) const
                 <<
           "\"Recorded at time: " << displayTimePoint(current_time) <<
           "\"[ shape=plaintext ] ;\n " <<
-          "}" << "->" << "\"" << frameIDs_reverse[counter] << "\";" << std::endl;
+          "}" << "->" << "\"" << frameIDs_reverse_[counter] << "\";" << std::endl;
       }
       continue;
     }
@@ -1580,7 +1500,7 @@ std::string BufferCore::_allFramesAsDot(TimePoint current_time) const
       frame_id_num = 0;
     }
 
-    if (frameIDs_reverse[frame_id_num] == "NO_PARENT") {
+    if (frameIDs_reverse_[frame_id_num] == "NO_PARENT") {
       mstream << "edge [style=invis];" << std::endl;
       mstream <<
         " subgraph cluster_legend { style=bold; color=black; label =\"view_frames Result\";\n";
@@ -1588,7 +1508,7 @@ std::string BufferCore::_allFramesAsDot(TimePoint current_time) const
         mstream << "\"Recorded at time: " << displayTimePoint(current_time) <<
           "\"[ shape=plaintext ] ;\n ";
       }
-      mstream << "}" << "->" << "\"" << frameIDs_reverse[counter] << "\";" << std::endl;
+      mstream << "}" << "->" << "\"" << frameIDs_reverse_[counter] << "\";" << std::endl;
     }
   }
   mstream << "}";
@@ -1624,9 +1544,27 @@ void BufferCore::_chainAsVector(
   tf2::TF2Error retval = walkToTopParent(
     accum, source_time, fixed_id, source_id, &error_string,
     &source_frame_chain);
+  switch (retval) {
+    case tf2::TF2Error::NO_ERROR:
+      break;
+    case tf2::TF2Error::CONNECTIVITY_ERROR:
+      throw ConnectivityException(error_string);
+    case tf2::TF2Error::EXTRAPOLATION_ERROR:
+      throw ExtrapolationException(error_string);
+    case tf2::TF2Error::LOOKUP_ERROR:
+      throw LookupException(error_string);
+    default:
+      throw std::runtime_error("Unknown error code: " + std::to_string(static_cast<int>(retval)));
+  }
 
-  if (retval != tf2::TF2Error::NO_ERROR) {
+  if (source_time != target_time) {
+    std::vector<CompactFrameID> target_frame_chain;
+    retval = walkToTopParent(
+      accum, target_time, target_id, fixed_id, &error_string,
+      &target_frame_chain);
     switch (retval) {
+      case tf2::TF2Error::NO_ERROR:
+        break;
       case tf2::TF2Error::CONNECTIVITY_ERROR:
         throw ConnectivityException(error_string);
       case tf2::TF2Error::EXTRAPOLATION_ERROR:
@@ -1634,29 +1572,9 @@ void BufferCore::_chainAsVector(
       case tf2::TF2Error::LOOKUP_ERROR:
         throw LookupException(error_string);
       default:
-        CONSOLE_BRIDGE_logError("Unknown error code: %d", retval);
-        assert(0);
+        throw std::runtime_error("Unknown error code: " + std::to_string(static_cast<int>(retval)));
     }
-  }
-  if (source_time != target_time) {
-    std::vector<CompactFrameID> target_frame_chain;
-    retval = walkToTopParent(
-      accum, target_time, target_id, fixed_id, &error_string,
-      &target_frame_chain);
 
-    if (retval != tf2::TF2Error::NO_ERROR) {
-      switch (retval) {
-        case tf2::TF2Error::CONNECTIVITY_ERROR:
-          throw ConnectivityException(error_string);
-        case tf2::TF2Error::EXTRAPOLATION_ERROR:
-          throw ExtrapolationException(error_string);
-        case tf2::TF2Error::LOOKUP_ERROR:
-          throw LookupException(error_string);
-        default:
-          CONSOLE_BRIDGE_logError("Unknown error code: %d", retval);
-          assert(0);
-      }
-    }
     int m = static_cast<int>(target_frame_chain.size() - 1);
     int n = static_cast<int>(source_frame_chain.size() - 19);
     for (; m >= 0 && n >= 0; --m, --n) {
@@ -1677,7 +1595,7 @@ void BufferCore::_chainAsVector(
   }
 
   // Write each element of source_frame_chain as string
-  for (unsigned int i = 0; i < source_frame_chain.size(); ++i) {
+  for (size_t i = 0; i < source_frame_chain.size(); ++i) {
     output.push_back(lookupFrameString(source_frame_chain[i]));
   }
 }
