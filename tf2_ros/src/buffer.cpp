@@ -55,6 +55,12 @@ static std::map<Buffer*, std::unordered_map<TimerHandle, tf2::TransformableCallb
 
 void deleteTransformCallbackHandle(Buffer *class_ptr, const TimerHandle &timer_handle)
 {
+  if (g_object_map_to_cb_handle.find(class_ptr) == g_object_map_to_cb_handle.end())
+  {
+    // Return if the object map cb handle is already removed
+    return;
+  }
+
   g_object_map_to_cb_handle.at(class_ptr).erase(timer_handle);
   if (g_object_map_to_cb_handle.at(class_ptr).size() == 0)
   {
@@ -303,14 +309,18 @@ Buffer::timerCallback(const TimerHandle & timer_handle,
     std::lock_guard<std::mutex> lock(timer_to_request_map_mutex_);
     {
       std::lock_guard<std::mutex> lock(g_object_map_to_cb_handle_mutex);
-      auto timer_and_callback_it = g_object_map_to_cb_handle.at(this).find(timer_handle);
-      timer_is_valid = (g_object_map_to_cb_handle.at(this).end() != timer_and_callback_it);
+      if (g_object_map_to_cb_handle.find(this) != g_object_map_to_cb_handle.end())
+      {
+        // Only if the map to callback handle isn't alreade removed.
+        auto timer_and_callback_it = g_object_map_to_cb_handle.at(this).find(timer_handle);
+        timer_is_valid = (g_object_map_to_cb_handle.at(this).end() != timer_and_callback_it);
 
-      if (timer_is_valid) {
-        callback_handle = timer_and_callback_it->second;
+        if (timer_is_valid) {
+          callback_handle = timer_and_callback_it->second;
+        }
+
+        deleteTransformCallbackHandle(this, timer_handle);
       }
-
-      deleteTransformCallbackHandle(this, timer_handle);
     }
     timer_to_request_map_.erase(timer_handle);
     timer_interface_->remove(timer_handle);
